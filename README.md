@@ -9,7 +9,7 @@ A locally running Windows desktop application inspired by Apple's **Screen Time*
 - Automatically extracts application icons from Windows metadata and stores them in a local icon cache (`%LOCALAPPDATA%\ScreenTime\icons\`).
 - Groups related processes belonging to the same application using stable application identifiers.
 
-### 2. Intelligent Idle Detection for Learning & Reading
+### 2. Intelligent Idle Detection for Studying & Reading
 - Monitors mouse and keyboard activity using `GetLastInputInfo`, as well as screen locking and standby through Windows system events.
 - **Category-specific and app-specific idle thresholds:**
   - A dedicated **Learning & Reading** category with a default idle threshold of **15 minutes (900 seconds)** for PDF readers (Adobe Acrobat, SumatraPDF, Foxit, PDF24, Drawboard), note-taking apps (Obsidian, Notion, OneNote), and learning tools (Anki, Zotero, Calibre).
