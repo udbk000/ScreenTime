@@ -41,18 +41,6 @@ The Windows installer (`.exe`) is available as a downloadable asset under **[Git
 
 > **Note:** Windows may display a security warning if the installer is not signed. Only run the installer if you trust its source.
 
-## Build, Run & Test
-
-Run these commands from the repository root in PowerShell.
-
-```powershell
-# Build and run the application
-dotnet run --project src\ScreenTime.App\ScreenTime.App.csproj
-
-# Run the automated tests
-dotnet run --project tests\ScreenTime.Tests\ScreenTime.Tests.csproj
-```
-
 ## Privacy
 
 ScreenTime is designed to keep usage data local. It does not require a cloud account or cloud synchronization.
