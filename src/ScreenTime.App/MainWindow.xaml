@@ -1,0 +1,1202 @@
+<Window
+    x:Class="ScreenTime.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="">
+
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30" />
+            <RowDefinition Height="50" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Minimale, unauffällige Titelleiste ohne Icon und ohne Namen (Schwarz im Dark Mode, Weiß im Light Mode) -->
+        <Border x:Name="CustomTitleBarBorder"
+                Grid.Row="0"
+                Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" />
+
+        <!-- Schlanke Status- & Aktionsleiste (ohne App-Icon / ohne App-Namen oben links) -->
+        <Border Grid.Row="1"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="20,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Live-Aktivitäts-Indikator links -->
+                <Border Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        CornerRadius="18"
+                        Padding="14,6"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Ellipse x:Name="LiveStatusDot" Width="9" Height="9" Fill="{ThemeResource AccentFillColorDefaultBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="LiveStatusHeaderText"
+                                   Text="Erfassung aktiv..."
+                                   FontSize="12"
+                                   FontWeight="Medium"
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="LiveIdleHeaderText"
+                                   Text=""
+                                   FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Rechts: Desktop-Widget, Aktualisieren & Theme-Schnellumschalter -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button x:Name="ToggleWidgetButton"
+                            Click="OnToggleWidgetClicked"
+                            ToolTipService.ToolTip="Kompaktes Desktop-Widget öffnen oder schließen"
+                            Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE744;" FontSize="13" />
+                            <TextBlock Text="Desktop-Widget" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="QuickRefreshButton"
+                            Click="OnRefreshClicked"
+                            ToolTipService.ToolTip="Statistiken jetzt aktualisieren"
+                            Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE72C;" FontSize="13" />
+                            <TextBlock Text="Aktualisieren" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="QuickThemeButton"
+                            Click="OnQuickThemeToggleClicked"
+                            ToolTipService.ToolTip="Zwischen Hell-, Dunkel- und Systemmodus wechseln"
+                            Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon x:Name="QuickThemeIcon" Glyph="&#xE793;" FontSize="13" />
+                            <TextBlock x:Name="QuickThemeLabel" Text="Modus: System" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Hauptnavigation & Inhaltsbereich (LeftCompact hält den Hauptbereich immer exakt mittig, auch wenn die Sidebar ausgeklappt wird) -->
+        <NavigationView x:Name="MainNav"
+                        Grid.Row="2"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        PaneDisplayMode="LeftCompact"
+                        CompactPaneLength="48"
+                        OpenPaneLength="230"
+                        SelectionChanged="OnNavigationSelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Icon="Home" Content="Übersicht" Tag="dashboard" IsSelected="True" />
+                <NavigationViewItem Content="Verlauf &amp; 6-Wochen-Ø" Tag="history">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9D2;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Apps" Tag="apps">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE71D;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Kategorien" Tag="categories">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8FD;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Icon="Setting" Content="Einstellungen &amp; Diagnose" Tag="settings" />
+            </NavigationView.MenuItems>
+
+            <Grid HorizontalAlignment="Stretch">
+                <!-- ========================================================= -->
+                <!-- 1. ÜBERSICHT / DASHBOARD                                  -->
+                <!-- ========================================================= -->
+                <ScrollViewer x:Name="DashboardView" Visibility="Visible" HorizontalContentAlignment="Stretch" Padding="28,22,28,36">
+                    <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="100*" MaxWidth="1220" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="1" Spacing="22" HorizontalAlignment="Stretch">
+
+                        <!-- Kopfzeile Dashboard -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Bildschirmzeit" FontSize="28" FontWeight="Bold" />
+                                <TextBlock x:Name="DashboardSubtitleText"
+                                           Text="Heute • Aktive Computernutzung ohne Leerlaufzeiten"
+                                           FontSize="13"
+                                           Opacity="0.68" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <Button Content="30-Tage-Monatsverlauf öffnen" Click="OnJumpToMonthHistoryClicked" />
+                                <Button Content="6-Wochen-Durchschnitt prüfen" Click="OnJumpToSixWeeksClicked" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Obere KPI-Karten: Heute vs. 6-Wochen-Durchschnitt + 7-Tage-Schnitt -->
+                        <Grid ColumnSpacing="18" RowSpacing="18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.25*" />
+                                <ColumnDefinition Width="1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Karte Links: Heutige aktive Nutzungszeit + Kategorie-Balken -->
+                            <Border Grid.Column="0"
+                                    CornerRadius="16"
+                                    Padding="24"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="HEUTE AKTIV" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                            <TextBlock x:Name="DashboardTodayTotalText"
+                                                       Text="0 Min."
+                                                       FontSize="38"
+                                                       FontWeight="Bold"
+                                                       Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <Border Grid.Column="1"
+                                                CornerRadius="10"
+                                                Padding="12,8"
+                                                VerticalAlignment="Top"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="6-Wochen-Durchschnitt" FontSize="11" Opacity="0.65" />
+                                                <TextBlock x:Name="DashboardSixWeekValueText"
+                                                           Text="0 Min. / Tag"
+                                                           FontSize="16"
+                                                           FontWeight="SemiBold" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <TextBlock x:Name="DashboardComparisonText"
+                                               Text="Vergleich mit dem 6-Wochen-Durchschnitt"
+                                               FontSize="13"
+                                               Opacity="0.8" />
+
+                                    <!-- Gestapelter Kategorien-Balken im Apple-ScreenTime-Stil -->
+                                    <Border CornerRadius="6"
+                                            Height="14"
+                                            Background="{ThemeResource ControlStrongStrokeColorDisabledBrush}">
+                                        <Grid x:Name="DashboardCategoryStackedBar" />
+                                    </Border>
+
+                                    <!-- Top-Kategorie-Legende -->
+                                    <StackPanel x:Name="DashboardCategoryPillsPanel"
+                                                Orientation="Horizontal"
+                                                Spacing="16" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Karte Rechts: 7-Tage-Kurzverlauf im Dashboard -->
+                            <Border Grid.Column="1"
+                                    CornerRadius="16"
+                                    Padding="24"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="VERLAUF DER LETZTEN 7 TAGE" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                            <TextBlock x:Name="DashboardWeekAverageText"
+                                                       Text="Ø 0 Min. pro Tag"
+                                                       FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Content="Details"
+                                                Click="OnJumpToWeekHistoryClicked"
+                                                VerticalAlignment="Top" />
+                                    </Grid>
+
+                                    <Grid x:Name="DashboardWeekChartGrid" Height="125" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Stündliche Verteilung heute (00:00 - 23:00 Uhr) -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="TAGESVERLAUF NACH UHRZEIT (HEUTE)" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                        <TextBlock Text="Aktive Minuten pro Stunde (00:00 – 23:00 Uhr)" FontSize="13" Opacity="0.7" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Padding="8,6"
+                                            VerticalAlignment="Center"
+                                            ToolTipService.ToolTip="Informationen zu Leerlauf-Schwellwerten &amp; Einstellungen">
+                                        <FontIcon Glyph="&#xE946;" FontSize="14" />
+                                        <Button.Flyout>
+                                            <Flyout Placement="BottomEdgeAlignedRight">
+                                                <StackPanel Spacing="10" MaxWidth="320">
+                                                    <TextBlock Text="Leerlauf-Schwellwerte &amp; Video-Streaming" FontWeight="SemiBold" FontSize="14" />
+                                                    <TextBlock Text="Die Leerlauf-Schwellwerte für alle Kategorien und einzelnen Apps können in den Einstellungen frei angepasst werden. Aktives Video-Streaming und Medienwiedergabe zählen auch ohne Maus- oder Tastatureingabe automatisch als aktive Bildschirmzeit."
+                                                               FontSize="12"
+                                                               Opacity="0.85"
+                                                               TextWrapping="Wrap" />
+                                                    <Button Content="Schwellwerte in den Einstellungen bearbeiten"
+                                                            Click="OnJumpToSettingsClicked"
+                                                            HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Flyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                </Grid>
+                                <Grid x:Name="DashboardHourlyChartGrid" Height="115" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Untere zwei Spalten: Meistgenutzte Apps heute & Kategorien heute -->
+                        <Grid ColumnSpacing="18" RowSpacing="18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.25*" />
+                                <ColumnDefinition Width="1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Meistgenutzte Apps -->
+                            <Border Grid.Column="0"
+                                    CornerRadius="16"
+                                    Padding="24"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="MEISTGENUTZTE APPS (HEUTE)" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                            <TextBlock Text="Anklicken für App-Detailansicht &amp; Verlauf" FontSize="12" Opacity="0.65" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Alle Apps" Click="OnJumpToAppsClicked" />
+                                    </Grid>
+                                    <StackPanel x:Name="DashboardTopAppsList" Spacing="8" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Nutzungszeit nach Kategorien -->
+                            <Border Grid.Column="1"
+                                    CornerRadius="16"
+                                    Padding="24"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="KATEGORIEN (HEUTE)" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                            <TextBlock Text="Anklicken zum Öffnen der Kategorie-Apps" FontSize="12" Opacity="0.65" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Kategorien öffnen" Click="OnJumpToCategoriesClicked" />
+                                    </Grid>
+                                    <StackPanel x:Name="DashboardCategoriesList" Spacing="8" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- ========================================================= -->
+                <!-- 2. VERLAUF (WOCHE, 30-TAGE-MONAT, 6-WOCHEN-Ø & TAG)       -->
+                <!-- ========================================================= -->
+                <ScrollViewer x:Name="HistoryView" Visibility="Collapsed" HorizontalContentAlignment="Stretch" Padding="28,22,28,36">
+                    <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="100*" MaxWidth="1220" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="1" Spacing="22" HorizontalAlignment="Stretch">
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Verlauf &amp; Statistik" FontSize="28" FontWeight="Bold" />
+                                <TextBlock x:Name="HistorySubtitleText"
+                                           Text="Letzte 30 Tage (Monatsverlauf) und 6-Wochen-Durchschnitt"
+                                           FontSize="13"
+                                           Opacity="0.68" />
+                            </StackPanel>
+
+                            <!-- Segmented-Style Zeitraum-Umschalter -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button x:Name="HistoryBtnWeek" Content="Letzte 7 Tage (Woche)" Click="OnHistoryPeriodModeClicked" Tag="Week" />
+                                <Button x:Name="HistoryBtnMonth" Content="Letzte 30 Tage (Monat)" Click="OnHistoryPeriodModeClicked" Tag="Month" />
+                                <Button x:Name="HistoryBtnSixWeeks" Content="6-Wochen-Durchschnitt (42 Tage)" Click="OnHistoryPeriodModeClicked" Tag="SixWeeks" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Drei Kennzahlen-Karten für den gewählten Zeitraum -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="1.2*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    CornerRadius="14"
+                                    Padding="20"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="TAGESDURCHSCHNITT IM ZEITRAUM" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                    <TextBlock x:Name="HistoryPeriodDailyAvgText" Text="0 Min." FontSize="28" FontWeight="Bold" />
+                                    <TextBlock x:Name="HistoryPeriodTotalText" Text="Gesamtzeit: 0 Min." FontSize="12" Opacity="0.7" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1"
+                                    CornerRadius="14"
+                                    Padding="20"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="6-WOCHEN-DURCHSCHNITT (TÄGLICH AKTIV)" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                    <TextBlock x:Name="HistorySixWeekAvgText" Text="0 Min." FontSize="28" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock x:Name="HistorySixWeekDaysBadge" Text="Ausgewertete Tage: 0" FontSize="12" Opacity="0.7" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="2"
+                                    CornerRadius="14"
+                                    Padding="20"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="BERECHNUNGSREGEL FÜR DURCHSCHNITTE" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                    <TextBlock x:Name="HistorySixWeekExplanationText"
+                                               Text=""
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Opacity="0.85" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Interaktives Balkendiagramm (7 / 30 / 42 Tage) -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock x:Name="HistoryChartTitleText"
+                                                   Text="MONATSVERLAUF (LETZTE 30 TAGE)"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Opacity="0.65" />
+                                        <TextBlock Text="Klicke auf einen beliebigen Tag im Diagramm, um unten dessen komplette Tagesansicht zu untersuchen."
+                                                   FontSize="12"
+                                                   Opacity="0.65" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <Button Content="◀ Vorheriger Tag" Click="OnPrevDayClicked" />
+                                        <Button Content="Heute" Click="OnTodayDayClicked" />
+                                        <Button Content="Nächster Tag ▶" Click="OnNextDayClicked" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid x:Name="HistoryMainBarChartGrid" Height="190" Margin="0,8,0,4" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Detailansicht für den ausgewählten Tag (Abschnitt 4.1 & 6.2) -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="18">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="AUSGEWÄHLTER TAG – DETAILANSICHT" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                        <TextBlock x:Name="SelectedDayTitleText" Text="Heute" FontSize="22" FontWeight="Bold" />
+                                        <TextBlock x:Name="SelectedDayComparisonText" Text="" FontSize="12" Opacity="0.7" />
+                                    </StackPanel>
+                                    <Border Grid.Column="1"
+                                            CornerRadius="12"
+                                            Padding="16,10"
+                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                        <StackPanel HorizontalAlignment="Right">
+                                            <TextBlock Text="Aktive Gesamtzeit am Tag" FontSize="11" Opacity="0.65" />
+                                            <TextBlock x:Name="SelectedDayTotalDurationText"
+                                                       Text="0 Min."
+                                                       FontSize="24"
+                                                       FontWeight="Bold"
+                                                       HorizontalAlignment="Right" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnSpacing="20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1.35*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Spacing="10">
+                                        <TextBlock Text="Kategorien an diesem Tag" FontSize="14" FontWeight="SemiBold" />
+                                        <StackPanel x:Name="SelectedDayCategoriesPanel" Spacing="8" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Spacing="10">
+                                        <TextBlock Text="Genutzte Apps an diesem Tag" FontSize="14" FontWeight="SemiBold" />
+                                        <StackPanel x:Name="SelectedDayAppsPanel" Spacing="8" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Zusammenfassende Statistik für den gesamten gewählten Zeitraum (7/30/42 Tage) -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="16">
+                                <TextBlock x:Name="HistorySummaryBlockTitle"
+                                           Text="Häufig genutzte Kategorien &amp; Apps im gesamten Zeitraum"
+                                           FontSize="16"
+                                           FontWeight="SemiBold" />
+                                <Grid ColumnSpacing="20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1.35*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" x:Name="HistoryPeriodCategoriesPanel" Spacing="8" />
+                                    <StackPanel Grid.Column="1" x:Name="HistoryPeriodTopAppsPanel" Spacing="8" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- ========================================================= -->
+                <!-- 3. APPS & APP-DETAILANSICHT (Abschnitt 3.1, 3.2 & 6.6)    -->
+                <!-- ========================================================= -->
+                <ScrollViewer x:Name="AppsView" Visibility="Collapsed" HorizontalContentAlignment="Stretch" Padding="28,22,28,36">
+                    <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="100*" MaxWidth="1220" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="1" Spacing="20" HorizontalAlignment="Stretch">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Anwendungen &amp; App-Details" FontSize="28" FontWeight="Bold" />
+                                <TextBlock Text="Alle erkannten Programme mit Anzeigenamen, Symbolen, Verlauf und individuellem Idle-Schwellwert"
+                                           FontSize="13"
+                                           Opacity="0.68" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button Content="Heute" Click="OnAppsRangeClicked" Tag="Today" />
+                                <Button Content="Letzte 7 Tage" Click="OnAppsRangeClicked" Tag="Week" />
+                                <Button Content="Letzte 30 Tage" Click="OnAppsRangeClicked" Tag="Month" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnSpacing="20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.05*" />
+                                <ColumnDefinition Width="1.2*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Links: App-Rangliste + Suche -->
+                            <Border Grid.Column="0"
+                                    CornerRadius="16"
+                                    Padding="20"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Top">
+                                <StackPanel Spacing="14">
+                                    <TextBox x:Name="AppSearchBox"
+                                             PlaceholderText="Nach App-Name oder Kategorie suchen..."
+                                             TextChanged="OnAppSearchTextChanged" />
+                                    <StackPanel x:Name="AppsMasterListPanel" Spacing="8" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Rechts: App-Detailansicht -->
+                            <Border Grid.Column="1"
+                                    CornerRadius="16"
+                                    Padding="24"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Top">
+                                <StackPanel x:Name="AppDetailContentPanel" Spacing="18">
+                                    <!-- Kopf der App-Detailansicht -->
+                                    <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                        <Border Width="56" Height="56" CornerRadius="14"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                VerticalAlignment="Center">
+                                            <Grid>
+                                                <FontIcon x:Name="AppDetailFallbackIcon" Glyph="&#xE71D;" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <Image x:Name="AppDetailImage" Width="40" Height="40" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center" Spacing="4">
+                                            <TextBlock x:Name="AppDetailNameText" Text="App auswählen" FontSize="22" FontWeight="Bold" />
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Border x:Name="AppDetailCategoryBadge" CornerRadius="6" Padding="8,3" Background="{ThemeResource AccentFillColorDefaultBrush}">
+                                                    <TextBlock x:Name="AppDetailCategoryText" Text="Kategorie" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" FontSize="11" FontWeight="SemiBold" />
+                                                </Border>
+                                                <TextBlock x:Name="AppDetailIdleThresholdInfo"
+                                                           Text="Idle-Schwellwert: 5 Min."
+                                                           FontSize="12"
+                                                           Opacity="0.7"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Drei Zeit-Kennzahlen der App: Heute, 7 Tage, 30 Tage -->
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" CornerRadius="10" Padding="14" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="HEUTE" FontSize="10" FontWeight="SemiBold" Opacity="0.6" />
+                                                <TextBlock x:Name="AppDetailTodayText" Text="0 Min." FontSize="18" FontWeight="Bold" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="1" CornerRadius="10" Padding="14" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="LETZTE 7 TAGE" FontSize="10" FontWeight="SemiBold" Opacity="0.6" />
+                                                <TextBlock x:Name="AppDetail7DaysText" Text="0 Min." FontSize="18" FontWeight="Bold" />
+                                                <TextBlock x:Name="AppDetail7DaysAvgText" Text="Ø 0 Min./Tag" FontSize="11" Opacity="0.65" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="2" CornerRadius="10" Padding="14" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="LETZTE 30 TAGE" FontSize="10" FontWeight="SemiBold" Opacity="0.6" />
+                                                <TextBlock x:Name="AppDetail30DaysText" Text="0 Min." FontSize="18" FontWeight="Bold" />
+                                                <TextBlock x:Name="AppDetail30DaysAvgText" Text="Ø 0 Min./Tag" FontSize="11" Opacity="0.65" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- 7-Tage-Verlauf der App -->
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Nutzungsverlauf der letzten 7 Tage" FontSize="13" FontWeight="SemiBold" />
+                                        <Grid x:Name="AppDetail7DayChartGrid" Height="100" />
+                                    </StackPanel>
+
+                                    <!-- 30-Tage-Verlauf der App -->
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Nutzungsverlauf der letzten 30 Tage" FontSize="13" FontWeight="SemiBold" />
+                                        <Grid x:Name="AppDetail30DayChartGrid" Height="100" />
+                                    </StackPanel>
+
+                                    <!-- Kategorie- & Idle-Schwellwert-Anpassung für diese App -->
+                                    <Border CornerRadius="12"
+                                            Padding="16"
+                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel Spacing="12">
+                                            <TextBlock Text="App-Zuordnung &amp; Leerlauf-Schwellwert (z. B. für PDF / Lernen)" FontSize="14" FontWeight="SemiBold" />
+                                            <TextBox x:Name="AppEditDisplayNameBox" Header="Anzeigename in der Oberfläche" />
+                                            <ComboBox x:Name="AppEditCategoryCombo" Header="Kategorie" HorizontalAlignment="Stretch" />
+                                            <TextBox x:Name="AppEditCustomIdleMinutesBox"
+                                                     Header="Eigener Idle-Schwellwert in Minuten (leer lassen = Kategorie-Standard nutzen)"
+                                                     PlaceholderText="z. B. 15 für langes PDF-Lesen ohne Mausbewegung" />
+                                            <Button Content="App-Einstellungen speichern"
+                                                    Style="{StaticResource AccentButtonStyle}"
+                                                    Click="OnSaveAppCustomizationClicked" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Technische Details nur in aufklappbarer Diagnoseansicht (Abschnitt 6.6) -->
+                                    <Expander Header="Technische Diagnose-Informationen (Prozess &amp; Pfad)" HorizontalAlignment="Stretch">
+                                        <StackPanel Spacing="6" Padding="8">
+                                            <TextBlock x:Name="AppDiagIdentifierText" Text="App-ID: -" FontSize="12" IsTextSelectionEnabled="True" />
+                                            <TextBlock x:Name="AppDiagProcessText" Text="Prozessname: -" FontSize="12" IsTextSelectionEnabled="True" />
+                                            <TextBlock x:Name="AppDiagPathText" Text="Ausführbarer Pfad: -" FontSize="12" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- ========================================================= -->
+                <!-- 4. KATEGORIEN & DRILL-DOWN (Abschnitt 5 & 6.5)            -->
+                <!-- ========================================================= -->
+                <ScrollViewer x:Name="CategoriesView" Visibility="Collapsed" HorizontalContentAlignment="Stretch" Padding="28,22,28,36">
+                    <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="100*" MaxWidth="1220" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="1" Spacing="20" HorizontalAlignment="Stretch">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Kategorien &amp; Aufteilung" FontSize="28" FontWeight="Bold" />
+                                <TextBlock Text="Nutzungszeit nach Kategorien, visuelle Anteile und Drill-Down zu den enthaltenen Apps"
+                                           FontSize="13"
+                                           Opacity="0.68" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button Content="Heute" Click="OnCategoriesRangeClicked" Tag="Today" />
+                                <Button Content="Letzte 7 Tage" Click="OnCategoriesRangeClicked" Tag="Week" />
+                                <Button Content="Letzte 30 Tage" Click="OnCategoriesRangeClicked" Tag="Month" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Visuelle Anteilsleiste über alle Kategorien -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="CategoriesRangeTitleText"
+                                           Text="ANTEILE DER KATEGORIEN (LETZTE 30 TAGE)"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Opacity="0.6" />
+                                <Border CornerRadius="8" Height="18" Background="{ThemeResource ControlStrongStrokeColorDisabledBrush}">
+                                    <Grid x:Name="CategoriesViewStackedBar" />
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Master-Detail: Alle Kategorien & Erstellung links, enthaltene Apps & Zuordnung rechts -->
+                        <Grid ColumnSpacing="20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.05*" />
+                                <ColumnDefinition Width="1.3*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Spacing="16" VerticalAlignment="Top">
+                                <Border CornerRadius="16"
+                                        Padding="20"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="Alle Kategorien (Anklicken für Drill-Down)" FontSize="14" FontWeight="SemiBold" />
+                                        <StackPanel x:Name="CategoriesMasterListPanel" Spacing="8" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Eigene Kategorie mit eigenem Schwellwert & direkter RGB-Farbpalette erstellen -->
+                                <Border CornerRadius="16"
+                                        Padding="20"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="Neue Kategorie mit eigenem Schwellwert erstellen" FontSize="15" FontWeight="SemiBold" />
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.45*" />
+                                                <ColumnDefinition Width="1*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="NewCategoryNameBox"
+                                                     Grid.Column="0"
+                                                     Header="Name der Kategorie"
+                                                     PlaceholderText="z. B. Vorlesungen, Streaming..." />
+                                            <TextBox x:Name="NewCategoryIdleMinutesBox"
+                                                     Grid.Column="1"
+                                                     Header="Idle-Limit (Min.)"
+                                                     Text="15" />
+                                        </Grid>
+
+                                        <!-- Inline RGB-Farbpalette (kein verwackelndes Dropdown-Popup im Fullscreen) -->
+                                        <Border CornerRadius="10"
+                                                Padding="12"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderThickness="1">
+                                            <StackPanel Spacing="10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="RGB-Farbpalette wählen" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                        <Border x:Name="NewCategoryColorPreviewBorder"
+                                                                Width="22"
+                                                                Height="22"
+                                                                CornerRadius="6"
+                                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                                BorderThickness="1" />
+                                                        <TextBlock x:Name="NewCategoryColorHexText"
+                                                                   Text="#0078D4 (RGB: 0, 120, 212)"
+                                                                   FontFamily="Consolas"
+                                                                   FontSize="11"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <!-- 16 direkt anklickbare RGB-Farbkacheln -->
+                                                <Grid x:Name="NewCategoryRgbPaletteGrid" RowSpacing="6" ColumnSpacing="6" />
+
+                                                <!-- Präzise RGB-Schieberegler (R / G / B: 0–255) -->
+                                                <Grid ColumnSpacing="10" RowSpacing="2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="26" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="32" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="R" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                                    <Slider x:Name="NewCategoryRSlider" Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="255" StepFrequency="1" Value="0" ValueChanged="OnNewCategoryRgbSliderChanged" />
+                                                    <TextBlock x:Name="NewCategoryRValueText" Grid.Row="0" Grid.Column="2" Text="0" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="G" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                                    <Slider x:Name="NewCategoryGSlider" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="255" StepFrequency="1" Value="120" ValueChanged="OnNewCategoryRgbSliderChanged" />
+                                                    <TextBlock x:Name="NewCategoryGValueText" Grid.Row="1" Grid.Column="2" Text="120" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="B" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                                    <Slider x:Name="NewCategoryBSlider" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="255" StepFrequency="1" Value="212" ValueChanged="OnNewCategoryRgbSliderChanged" />
+                                                    <TextBlock x:Name="NewCategoryBValueText" Grid.Row="2" Grid.Column="2" Text="212" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Button Content="Eigene Kategorie erstellen"
+                                                Style="{StaticResource AccentButtonStyle}"
+                                                HorizontalAlignment="Stretch"
+                                                Click="OnCreateCustomCategoryClicked" />
+                                        <TextBlock x:Name="CategoryCreateFeedbackText"
+                                                   Text=""
+                                                   FontSize="12"
+                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <Border Grid.Column="1"
+                                    CornerRadius="16"
+                                    Padding="24"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Top">
+                                <StackPanel Spacing="16">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock x:Name="CategoryDetailTitleText" Text="Kategorie" FontSize="22" FontWeight="Bold" />
+                                            <TextBlock x:Name="CategoryDetailSubtitleText" Text="Gesamtzeit und enthaltene Anwendungen" FontSize="13" Opacity="0.7" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                                            <Button x:Name="DeleteCustomCategoryButton"
+                                                    Content="Kategorie löschen"
+                                                    Visibility="Collapsed"
+                                                    Click="OnDeleteCustomCategoryClicked" />
+                                            <Border CornerRadius="10" Padding="14,8" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                <TextBlock x:Name="CategoryDetailTotalText" Text="0 Min." FontSize="20" FontWeight="Bold" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Direkte Einstellung des Kategorie-Idle-Schwellwerts -->
+                                    <Border CornerRadius="10" Padding="14" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="Standard-Idle-Schwellwert dieser Kategorie (Minuten)" FontSize="13" FontWeight="SemiBold" />
+                                                <TextBlock Text="Zeit ohne Maus-/Tastatureingabe zählt bis zu diesem Schwellwert voll als aktiv." FontSize="11" Opacity="0.7" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <TextBox x:Name="CategoryDetailIdleMinutesBox" Grid.Column="1" VerticalAlignment="Center" />
+                                            <Button Grid.Column="2" Content="Speichern" Click="OnSaveCategoryThresholdClicked" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Programm am PC oder Webseite (Link) eigenständig in diese Kategorie eintragen -->
+                                    <Border CornerRadius="12"
+                                            Padding="16"
+                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel Spacing="12">
+                                            <TextBlock Text="Programm oder Webseite (Link) zu dieser Kategorie hinzufügen" FontSize="14" FontWeight="SemiBold" />
+                                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                                <RadioButton x:Name="EntryTypeProgramRadio"
+                                                             Content="Programm am PC"
+                                                             IsChecked="True"
+                                                             GroupName="CategoryEntryTypeGroup"
+                                                             Checked="OnCategoryEntryTypeRadioChanged" />
+                                                <RadioButton x:Name="EntryTypeWebsiteRadio"
+                                                             Content="Webseite (Link)"
+                                                             GroupName="CategoryEntryTypeGroup"
+                                                             Checked="OnCategoryEntryTypeRadioChanged" />
+                                            </StackPanel>
+
+                                            <!-- Auswahl 1: Programm am PC -->
+                                            <StackPanel x:Name="AddProgramEntryPanel" Spacing="10">
+                                                <ComboBox x:Name="ExistingPcProgramCombo"
+                                                          Header="Bereits erkanntes PC-Programm wählen (optional)"
+                                                          PlaceholderText="Aus erkannten Apps wählen oder unten .exe auf dem PC suchen..."
+                                                          HorizontalAlignment="Stretch"
+                                                          SelectionChanged="OnExistingPcProgramComboSelectionChanged" />
+                                                <Grid ColumnSpacing="8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="ProgramPathOrProcessBox"
+                                                             Grid.Column="0"
+                                                             Header="Programm-Pfad (.exe) oder Prozessname"
+                                                             PlaceholderText="z. B. C:\Programme\...\App.exe" />
+                                                    <Button Grid.Column="1"
+                                                            Content="Programm am PC wählen..."
+                                                            VerticalAlignment="Bottom"
+                                                            Click="OnBrowseProgramForCategoryClicked" />
+                                                </Grid>
+                                                <TextBox x:Name="ProgramFriendlyNameBox"
+                                                         Header="Anzeigename (optional)"
+                                                         PlaceholderText="z. B. SumatraPDF oder Vorlesungs-Player" />
+                                                <Button Content="Programm zu dieser Kategorie hinzufügen"
+                                                        Style="{StaticResource AccentButtonStyle}"
+                                                        Click="OnAddProgramToCategoryClicked" />
+                                            </StackPanel>
+
+                                            <!-- Auswahl 2: Webseite (Link) -->
+                                            <StackPanel x:Name="AddWebsiteEntryPanel" Visibility="Collapsed" Spacing="10">
+                                                <TextBox x:Name="WebsiteUrlInputBox"
+                                                         Header="Webseite / Link (URL oder Domain)"
+                                                         PlaceholderText="z. B. https://www.youtube.com, netflix.com oder moodle.de" />
+                                                <TextBox x:Name="WebsiteDisplayNameInputBox"
+                                                         Header="Anzeigename der Webseite"
+                                                         PlaceholderText="z. B. YouTube, Netflix oder Uni-Moodle" />
+                                                <TextBlock Text="Sobald diese Webseite im Browser geöffnet ist, wird die aktive Zeit (inkl. Video-Streaming) automatisch dieser Kategorie und ihrem Schwellwert zugerechnet."
+                                                           FontSize="11"
+                                                           Opacity="0.7"
+                                                           TextWrapping="Wrap" />
+                                                <Button Content="Webseite (Link) zu dieser Kategorie hinzufügen"
+                                                        Style="{StaticResource AccentButtonStyle}"
+                                                        Click="OnAddWebsiteToCategoryClicked" />
+                                            </StackPanel>
+
+                                            <TextBlock x:Name="CategoryEntryAddedFeedbackText"
+                                                       Text=""
+                                                       FontSize="12"
+                                                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <TextBlock Text="Enthaltene Apps &amp; Webseiten in dieser Kategorie" FontSize="14" FontWeight="SemiBold" />
+                                    <StackPanel x:Name="CategoryDetailAppsPanel" Spacing="8" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- ========================================================= -->
+                <!-- 5. EINSTELLUNGEN & LIVE-DIAGNOSE (Abschnitt 6.7 & Phase 1)-->
+                <!-- ========================================================= -->
+                <ScrollViewer x:Name="SettingsView" Visibility="Collapsed" HorizontalContentAlignment="Stretch" Padding="28,22,28,36">
+                    <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="100*" MaxWidth="1050" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="1" Spacing="22" HorizontalAlignment="Stretch">
+                        <StackPanel>
+                            <TextBlock Text="Einstellungen &amp; Diagnose" FontSize="28" FontWeight="Bold" />
+                            <TextBlock Text="Darstellung (Light/Dark Mode), Kategorie-Schwellwerte für Leerlauf, Windows-Start und Live-Diagnose"
+                                       FontSize="13"
+                                       Opacity="0.68" />
+                        </StackPanel>
+
+                        <!-- 1. Darstellung: Light / Dark / System -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="14">
+                                <TextBlock Text="Darstellung &amp; Farbschema (Light / Dark Mode)" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="Wähle das Erscheinungsbild der Benutzeroberfläche." FontSize="13" Opacity="0.7" />
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <RadioButton x:Name="ThemeRadioSystem" Content="Systemstandard folgen" Tag="System" Checked="OnThemeRadioChecked" GroupName="ThemeGroup" />
+                                    <RadioButton x:Name="ThemeRadioLight" Content="Hell (Light Mode)" Tag="Light" Checked="OnThemeRadioChecked" GroupName="ThemeGroup" />
+                                    <RadioButton x:Name="ThemeRadioDark" Content="Dunkel (Dark Mode)" Tag="Dark" Checked="OnThemeRadioChecked" GroupName="ThemeGroup" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 2. Intelligente Idle-Erkennung (Kategorie-Schwellwerte & Globales Limit) -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="16">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Intelligente Leerlauf-Erkennung (Maus-/Tastaturaktivität &amp; Lernen/PDF)" FontSize="16" FontWeight="SemiBold" />
+                                    <TextBlock Text="Solange Maus- oder Tastaturaktivität innerhalb des Schwellwerts stattfindet, zählt die Zeit voll als aktive Nutzung. Beim Lesen von PDFs oder Lernen sind längere Pausen ohne Eingabe normal – passe die Schwellwerte pro Kategorie hier frei an:"
+                                               FontSize="13"
+                                               Opacity="0.75"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <StackPanel x:Name="SettingsCategoryThresholdsPanel" Spacing="10" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 3. Allgemeine Einstellungen, Autostart & System-Tray -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="16">
+                                <TextBlock Text="System-Integration &amp; Datenaufbewahrung" FontSize="16" FontWeight="SemiBold" />
+
+                                <Grid ColumnSpacing="20" RowSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <ToggleSwitch x:Name="SettingsLaunchAtStartupToggle"
+                                                  Grid.Row="0" Grid.Column="0"
+                                                  Header="Mit Windows starten (Autostart)"
+                                                  OffContent="Deaktiviert"
+                                                  OnContent="Aktiviert" />
+
+                                    <ToggleSwitch x:Name="SettingsMinimizeToTrayToggle"
+                                                  Grid.Row="0" Grid.Column="1"
+                                                  Header="Beim Schließen im System-Tray (Infobereich) weiterlaufen"
+                                                  OffContent="App direkt beenden"
+                                                  OnContent="In System-Tray minimieren" />
+
+                                    <TextBox x:Name="SettingsGlobalIdleSecondsBox"
+                                             Grid.Row="1" Grid.Column="0"
+                                             Header="Globaler Fallback-Idle-Schwellwert (Sekunden)"
+                                             PlaceholderText="60" />
+
+                                    <TextBox x:Name="SettingsRetentionDaysBox"
+                                             Grid.Row="1" Grid.Column="1"
+                                             Header="Lokale Datenaufbewahrung in Tagen (0 = unbegrenzt)"
+                                             PlaceholderText="365" />
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Button Content="Allgemeine Einstellungen speichern"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            Click="OnSaveGeneralSettingsClicked" />
+                                    <TextBlock x:Name="SettingsSavedFeedbackText"
+                                               Text=""
+                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                               VerticalAlignment="Center"
+                                               FontWeight="SemiBold" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 4. Lokale Datenverwaltung & Testdaten -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Lokale Datenbank &amp; Verlaufs-Testdaten" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="Alle Daten liegen ausschließlich lokal in SQLite unter %LocalAppData%\ScreenTime\screentime.db."
+                                           FontSize="13"
+                                           Opacity="0.75" />
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Button Content="6-Wochen-Beispieldaten (42 Tage) zum Testen einfügen"
+                                            Click="OnGenerateDemoDataClicked" />
+                                    <Button Content="Alle erfassten Nutzungsdaten löschen"
+                                            Click="OnClearAllDataClicked" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 5. Live-Diagnose / Debug-Ansicht (Phase 1 & Abschnitt 10) -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Live-Diagnose &amp; Vordergrundprozess-Monitor" FontSize="16" FontWeight="SemiBold" />
+                                <Grid ColumnSpacing="16" RowSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock x:Name="DiagCurrentAppText" Grid.Row="0" Grid.Column="0" Text="Aktuelle App: -" FontSize="13" />
+                                    <TextBlock x:Name="DiagCurrentProcessText" Grid.Row="0" Grid.Column="1" Text="Technischer Prozess: -" FontSize="13" />
+                                    <TextBlock x:Name="DiagCurrentCategoryText" Grid.Row="1" Grid.Column="0" Text="Kategorie: -" FontSize="13" />
+                                    <TextBlock x:Name="DiagIdleDurationText" Grid.Row="1" Grid.Column="1" Text="Zeit seit letzter Maus/Tastatur: 0s" FontSize="13" />
+                                    <TextBlock x:Name="DiagThresholdText" Grid.Row="2" Grid.Column="0" Text="Aktiver Idle-Schwellwert: 60s" FontSize="13" />
+                                    <TextBlock x:Name="DiagSessionStateText" Grid.Row="2" Grid.Column="1" Text="Status: Aktiv" FontSize="13" />
+                                </Grid>
+
+                                <TextBlock Text="Ereignis- und Fehlerprotokoll (letzte Einträge):" FontSize="13" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <Border CornerRadius="8" Padding="12" Background="{ThemeResource SubtleFillColorSecondaryBrush}" MaxHeight="200">
+                                    <ScrollViewer>
+                                        <TextBlock x:Name="DiagLogTextBlock"
+                                                   FontFamily="Consolas"
+                                                   FontSize="11"
+                                                   IsTextSelectionEnabled="True"
+                                                   TextWrapping="Wrap" />
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 6. Contact & Version (Über ScreenTime & GitHub) -->
+                        <Border CornerRadius="16"
+                                Padding="24"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <Grid ColumnSpacing="20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border x:Name="SettingsContactIconBadge" Grid.Column="0" Width="52" Height="52" CornerRadius="12" Background="{ThemeResource AccentFillColorDefaultBrush}" VerticalAlignment="Center">
+                                    <FontIcon x:Name="SettingsContactFallbackIcon" Glyph="&#xE9D9;" FontSize="24" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="Contact &amp; Über ScreenTime" FontSize="16" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                        <Border CornerRadius="6" Padding="8,2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Center">
+                                            <TextBlock x:Name="SettingsVersionBadgeText" Text="Version 1.1.0" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="Entwickelt für präzise, lokale Bildschirmzeit-Analyse unter Windows." FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="GitHub: github.com/udbk000 (@udbk000)" FontSize="13" FontWeight="Medium" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" IsTextSelectionEnabled="True" />
+                                </StackPanel>
+
+                                <Button Grid.Column="2"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        VerticalAlignment="Center"
+                                        Click="OnOpenGithubClicked">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE774;" FontSize="14" />
+                                        <TextBlock Text="GitHub: udbk000 öffnen" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </NavigationView>
+    </Grid>
+</Window>

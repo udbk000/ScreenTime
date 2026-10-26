@@ -1,0 +1,103 @@
+<Window
+    x:Class="ScreenTime.App.WidgetWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="">
+
+    <Grid x:Name="WidgetRootGrid"
+          Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+          PointerPressed="OnWidgetRootPointerPressed"
+          Padding="10">
+        <Border CornerRadius="14"
+                Padding="16"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1">
+            <StackPanel Spacing="12">
+                <!-- Kompakte Kopfzeile ohne Fenster-Titlebar, mit kleinem X zum Schließen -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Border x:Name="WidgetBrandBadge" Width="22" Height="22" CornerRadius="6" Background="{ThemeResource AccentFillColorDefaultBrush}">
+                            <FontIcon Glyph="&#xE9D9;" FontSize="12" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="HEUTE AKTIV"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <ToggleButton x:Name="PinTopToggle"
+                                      IsChecked="True"
+                                      Click="OnPinTopToggled"
+                                      Padding="6,4"
+                                      ToolTipService.ToolTip="Immer im Vordergrund halten">
+                            <FontIcon Glyph="&#xE718;" FontSize="11" />
+                        </ToggleButton>
+                        <Button Click="OnOpenMainWindowClicked"
+                                Padding="6,4"
+                                ToolTipService.ToolTip="Hauptfenster öffnen">
+                            <FontIcon Glyph="&#xE8A7;" FontSize="11" />
+                        </Button>
+                        <Button x:Name="CloseWidgetButton"
+                                Click="OnCloseWidgetClicked"
+                                Padding="6,4"
+                                ToolTipService.ToolTip="Widget schließen">
+                            <FontIcon Glyph="&#xE711;" FontSize="11" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Heutige Gesamtnutzungszeit -->
+                <StackPanel Spacing="2">
+                    <TextBlock x:Name="WidgetTodayTotalText"
+                               Text="0 Min."
+                               FontSize="28"
+                               FontWeight="Bold"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                    <TextBlock x:Name="WidgetComparisonText"
+                               Text=""
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <!-- Live-App-Anzeige -->
+                <Border CornerRadius="8"
+                        Padding="10,6"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse x:Name="WidgetLiveDot"
+                                 Width="8"
+                                 Height="8"
+                                 Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                                 VerticalAlignment="Center" />
+                        <TextBlock x:Name="WidgetLiveAppText"
+                                   Text="Aktiv..."
+                                   FontSize="11"
+                                   FontWeight="Medium"
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Kategorien-Balken (System-Palette) -->
+                <Border CornerRadius="5"
+                        Height="10"
+                        Background="{ThemeResource ControlStrongStrokeColorDisabledBrush}">
+                    <Grid x:Name="WidgetCategoryBarGrid" />
+                </Border>
+
+                <!-- Top 3 Apps heute -->
+                <StackPanel x:Name="WidgetTopAppsPanel" Spacing="6" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
