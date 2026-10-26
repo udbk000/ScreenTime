@@ -28,3 +28,4 @@ nuget.config
 installer/Output/
 *.zip
 
+installer/
